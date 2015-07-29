@@ -1,6 +1,9 @@
 #include <pebble.h>
 
 #define COLORS       true
+#define COLOR_KEY 1
+#define WHITE_INT 63
+#define PREV_COLOR 1
 #define ANTIALIASING true
 
 #define HAND_MARGIN  10
@@ -17,9 +20,10 @@ typedef struct {
 static Window *s_main_window;
 static Layer *s_canvas_layer;
 
+static GColor background_col;
 static GPoint s_center;
 static Time s_last_time, s_anim_time;
-static int s_radius = 0, s_anim_hours_60 = 0, s_color_channels[3];
+static int s_radius = 0;
 static bool s_animating = false;
 
 /*************************** AnimationImplementation **************************/
@@ -55,10 +59,6 @@ static void tick_handler(struct tm *tick_time, TimeUnits changed) {
   s_last_time.hours -= (s_last_time.hours > 12) ? 12 : 0;
   s_last_time.minutes = tick_time->tm_min;
 
-  for(int i = 0; i < 3; i++) {
-    s_color_channels[i] = rand() % 256;
-  }
-
   // Redraw
   if(s_canvas_layer) {
     layer_mark_dirty(s_canvas_layer);
@@ -72,7 +72,7 @@ static int hours_to_minutes(int hours_out_of_12) {
 static void update_proc(Layer *layer, GContext *ctx) {
   // Color background?
   if(COLORS) {
-    graphics_context_set_fill_color(ctx, GColorFromRGB(s_color_channels[0], s_color_channels[1], s_color_channels[2]));
+    graphics_context_set_fill_color(ctx, background_col);
     graphics_fill_rect(ctx, GRect(0, 0, 144, 168), 0, GCornerNone);
   }
 
@@ -155,8 +155,37 @@ static void hands_update(Animation *anim, AnimationProgress dist_normalized) {
   layer_mark_dirty(s_canvas_layer);
 }
 
+
+static void inbox_received_callback(DictionaryIterator *iterator, void *context) {
+  Tuple *t = dict_read_first(iterator);
+  while(t != NULL) {
+    // Process this pair's key
+    if(t->key == COLOR_KEY){
+      int int_col = (int)t->value->int32;
+      background_col = (GColor8){.argb=((uint8_t)(0xC0|int_col))};
+      persist_write_int(PREV_COLOR, int_col);        
+      
+      // Redraw
+      if(s_canvas_layer) {
+        layer_mark_dirty(s_canvas_layer);
+      }
+      
+      break;
+    }
+    // Get next pair, if any so we don't miss an actual request amongst other data
+    t = dict_read_next(iterator);
+  }
+
+  
+}
+
+
+static void inbox_dropped_callback(AppMessageResult reason, void *context) {
+  APP_LOG(APP_LOG_LEVEL_ERROR, "Message dropped!");
+}
+
+
 static void init() {
-  srand(time(NULL));
 
   time_t t = time(NULL);
   struct tm *time_now = localtime(&t);
@@ -170,7 +199,18 @@ static void init() {
   window_stack_push(s_main_window, true);
 
   tick_timer_service_subscribe(MINUTE_UNIT, tick_handler);
+  
+  app_message_register_inbox_received(inbox_received_callback);
+  app_message_register_inbox_dropped(inbox_dropped_callback);
+  app_message_open(app_message_inbox_size_maximum(), app_message_outbox_size_maximum());
 
+  if (! persist_exists(PREV_COLOR)) {
+    persist_write_int(PREV_COLOR, WHITE_INT);
+  }
+  int int_col = persist_read_int(PREV_COLOR);
+
+  background_col = (GColor8){.argb=((uint8_t)(0xC0|int_col))};
+  
   // Prepare animations
   AnimationImplementation radius_impl = {
     .update = radius_update
