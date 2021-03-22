@@ -1,0 +1,34 @@
+{
+  "version": "1.0.0",
+  "author": "Bo Warren",
+  "private": true,
+  "dependencies": {},
+  "keywords": [
+    "pebble-app"
+  ],
+  "pebble": {
+    "sdkVersion": "3",
+    "resources": {
+      "media": []
+    },
+    "projectType": "native",
+    "uuid": "0eb9f791-e457-4470-adf4-0045343e7a5e",
+    "messageKeys": {
+      "COLOR_KEY": 1
+    },
+    "enableMultiJS": false,
+    "displayName": "KS-Control-Color",
+    "watchapp": {
+      "onlyShownOnCommunication": false,
+      "hiddenApp": false,
+      "watchface": true
+    },
+    "targetPlatforms": [
+      "basalt"
+    ],
+    "capabilities": [
+      "configurable"
+    ]
+  },
+  "name": "KS-Control-Color"
+}
