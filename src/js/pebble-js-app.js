@@ -1,6 +1,6 @@
 Pebble.addEventListener('showConfiguration', function(e) {
   // Show config page
-  Pebble.openURL('https://raw.githubusercontent.com/bhwarren/ks-clock-face/master/ks-clock-color.html');
+  Pebble.openURL('http://bhwarren.github.io/ks-clock-face/ks-clock-color.html');
 });
 
 
