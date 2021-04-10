@@ -92,7 +92,7 @@ function getHSL(hexString){
 
 //when a preview is clicked, make selection show up on pebble
 function changeColor(hexColor) {
-	let colorID = getColorID(hexColor) 
+	let colorID = getColorID(colorPickerColors[hexColor].name) 
 	let colorUsages = JSON.parse(getCookie("colorUsages") || "{}")
 
 	colorUsages[hexColor] = (colorUsages[hexColor] || 0) + 1
