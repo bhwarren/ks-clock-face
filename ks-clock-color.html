@@ -8,9 +8,49 @@
 
 <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js" type="text/javascript"></script>
 <script src="http://bhwarren.github.io/ks-clock-face/color-dict.js" type="text/javascript"></script>
+<script src="https://cdn.jsdelivr.net/npm/ac-colors@1/dist/ac-colors.min.js"></script>
 
 
 <script>
+
+let colorPickerColors = color_picker_colors;
+let hexColors = Object.keys(colorPickerColors);
+hexColors.forEach(color => colorPickerColors[color].hsl = getHSL(color))
+hexColors.sort(colorSort).sort(colorSort).sort(colorSort)
+
+function getDiff(hsl1, hsl2, index){
+	let granularity = 8
+	let divisor = index == 0 ? 360 : 100
+	if(hsl1[0] == 0 && hsl1[1] == 0)
+		hsl1[0] = -1
+	if(hsl2[0] == 0 && hsl2[1] == 0)
+		hsl2[0] = -1
+	return Math.ceil(hsl1[index]/divisor*granularity) - Math.ceil(hsl2[index]/divisor*granularity)
+}
+
+// sort colors using hsl values
+function colorSort(color1, color2) {
+	let hsl1 = colorPickerColors[color1].hsl
+	let hsl2 = colorPickerColors[color2].hsl
+	
+	let hueDiff = getDiff(hsl1, hsl2, 0) 
+	let saturationDiff = getDiff(hsl1, hsl2, 1) 
+	let lightnessDiff = getDiff(hsl1, hsl2, 2) 
+
+	if(hueDiff != 0){
+		// if the hues are different, sort by that first
+		return hueDiff 
+	}
+	else if(saturationDiff != 0){
+		// if the saturation is different, then use that
+		return saturationDiff 
+	}
+	else{ 
+		// finally, if the hue and saturation are the same, order by lightness
+		return lightnessDiff 
+	}
+}
+
 //given a pebble color name, return an html color for the preview background 
 function getHTMLColor(name){
 	//color_picker_colors defined in color-dict.js
@@ -19,7 +59,83 @@ function getHTMLColor(name){
 			return key;
 		}
 	}
+}
 
+// gets the number used by pebble to represent the color
+function getColorID(name){
+	let nameToNumberMap = {'Black': 1,
+		'OxfordBlue': 1, 'DukeBlue': 2, 'Blue': 3, 'DarkGreen': 4,
+		'MidnightGreen': 5, 'CobaltBlue': 6, 'BlueMoon': 7, 'IslamicGreen': 8,
+		'JaegerGreen': 9, 'TiffanyBlue': 10, 'VividCerulean': 11, 'Green': 12,
+		'Malachite': 13, 'MediumSpringGreen': 14, 'Cyan': 15, 'BulgarianRose': 16,
+		'ImperialPurple': 17, 'Indigo': 18, 'ElectricUltramarine': 19, 'ArmyGreen': 20,
+		'DarkGray': 21, 'Liberty': 22, 'VeryLightBlue': 23, 'KellyGreen': 24,
+		'MayGreen': 25, 'CadetBlue': 26, 'PictonBlue': 27, 'BrightGreen': 28,
+		'ScreaminGreen': 29, 'MediumAquamarine': 30, 'ElectricBlue': 31, 'DarkCandyAppleRed': 32, 
+		'JazzberryJam': 33, 'Purple': 34, 'VividViolet': 35, 'WindsorTan': 36,
+		'RoseVale': 37, 'Purpureus': 38, 'LavenderIndigo': 39, 'Limerick': 40,
+		'Brass': 41, 'LightGray': 42, 'BabyBlueEyes': 43, 'SpringBud': 44,
+		'Inchworm': 45, 'MintGreen': 46, 'Celeste': 47, 'Red': 48,
+		'Folly': 49, 'FashionMagenta': 50, 'Magenta': 51, 'Orange': 52,
+		'SunsetOrange': 53, 'BrilliantRose': 54, 'ShockingPink': 55, 'ChromeYellow': 56,
+		'Rajah': 57, 'Melon': 58, 'RichBrilliantLavender': 59, 'Yellow': 60,
+		'Icterine': 61, 'PastelYellow': 62, 'White': 63
+	}
+	return nameToNumberMap[name.replace(/\s+/, '')]
+}
+
+// converts hex string to hsl, useful for sorting
+function getHSL(hexString){
+	let hslValue = (new Color({"color":hexString, "type":"hex"})).hsl
+	return hslValue
+}
+
+//when a preview is clicked, make selection show up on pebble
+function changeColor(hexColor) {
+	let colorID = getColorID(hexColor) 
+	let colorUsages = JSON.parse(getCookie("colorUsages") || "{}")
+
+	colorUsages[hexColor] = (colorUsages[hexColor] || 0) + 1
+
+	let expires = new Date();
+  	expires.setTime(expires.getTime() + (100*24*60*60*1000)); // 100 years from now
+	document.cookie = "colorUsages=" + JSON.stringify(colorUsages) + ";" + expires.toUTCString() + ";path=/";
+	location.href = 'pebblejs://close#color='+colorID;
+}
+
+// retrieves a cookie by the given name
+function getCookie(cname) {
+  var name = cname + "=";
+  var decodedCookie = decodeURIComponent(document.cookie);
+  var ca = decodedCookie.split(';');
+  for(var i = 0; i <ca.length; i++) {
+    var c = ca[i];
+    while (c.charAt(0) == ' ') {
+      c = c.substring(1);
+    }
+    if (c.indexOf(name) == 0) {
+      return c.substring(name.length, c.length);
+    }
+  }
+  return "";
+}
+
+// creates the html div for the given hex color
+function createColorDiv(color){
+	var colorName = colorPickerColors[color].name 
+	var colorID = getColorID(colorName)
+	let div = `
+		<div 
+			id='${colorID}' 
+			class='color' 
+			style='background-color: ${color};'
+			data-identifier='${colorName}' 
+			onclick="changeColor('${color}');"
+		>
+			${colorName}
+		</div>`
+
+	return div
 }
 
 $(document).ready(function(){
@@ -29,22 +145,38 @@ $(document).ready(function(){
 	var div_height = Math.round(div_width*1.3);
 
 	//set size of the previews
-	$('head').append('<style id="addedCSS" type="text/css"> .color {text-align:center;margin:3px;float:left;width:'+div_width+'px;height:'+div_height+'px;}</style>');
+	$('head').append('<style id="addedCSS" type="text/css"> .color {text-align:center;margin:3px;float:left;width:'+div_width+'px;height:'+div_height+'px;}</style>');	
+
+	let body = $("body")
+
+	// display all the frequently used colors
+	let colorUsages = JSON.parse(getCookie("colorUsages") || "{}")
+	Object.entries(colorUsages)
+		.sort( (a,b) => b[1] - a[1]) // sort by the number of usages
+		.slice(0, 6) // get only the first 6
+		.forEach( ([color, usages]) => {
+			// add them all to the interface
+			let div = createColorDiv(color)
+			body.append(div)
+		}
+	)
+
+	body.append(`
+		<hr 
+			class="color" 
+			style=" width: calc(100vw - 80px); 
+					height: 2px; 
+					margin: 20px;
+					background-color: #333;
+					" 
+		/>`)
 
 	//for every preview, set it's div color
-	$(".color").each(function(i,obj){
-		var identifier = $(this).attr('data-identifier');
-		if(identifier == "Black" || identifier == "OxfordBlue"){
-			$(this).css("color","white");
-		}
-		$(this).css("background-color",getHTMLColor(identifier));
-	});
+	hexColors.forEach( (color) => {
+		let div = createColorDiv(color)
+		body.append(div)
+	})
 });
-
-//when a preview is clicked, make selection show up on pebble
-function changeColor(color) {
-	location.href = 'pebblejs://close#color='+color;
-}
 	
 </script>
 
@@ -74,103 +206,6 @@ p {
 <body>
 	<p id="title"> KS-Color-Picker </p>
 	<p id="name"> Bo Warren </p>
-
-	<div>
-	<div id='0' class='color' data-identifier='Black' onclick="changeColor('0');">Black</div>
-	<div id='1' class='color' data-identifier='OxfordBlue' onclick="changeColor('1');">Oxford Blue</div>
-	<div id='2' class='color' data-identifier='DukeBlue' onclick="changeColor('2');">Duke Blue</div>
-	<div id='3' class='color' data-identifier='Blue' onclick="changeColor('3');">Blue</div>
-	</div>
-	<div>
-	<div id='4' class='color' data-identifier='DarkGreen' onclick="changeColor('4');">Dark Green</div>
-	<div id='5' class='color' data-identifier='MidnightGreen' onclick="changeColor('5');">Midnight Green</div>
-	<div id='6' class='color' data-identifier='CobaltBlue' onclick="changeColor('6');">Cobalt Blue</div>
-	<div id='7' class='color' data-identifier='BlueMoon' onclick="changeColor('7');">Blue Moon</div>
-	</div>
-	<div>
-	<div id='8' class='color' data-identifier='IslamicGreen' onclick="changeColor('8');">Islamic Green</div>
-	<div id='9' class='color' data-identifier='JaegerGreen' onclick="changeColor('9');">Jaeger Green</div>
-	<div id='10' class='color' data-identifier='TiffanyBlue' onclick="changeColor('10');">Tiffany Blue</div>
-	<div id='11' class='color' data-identifier='VividCerulean' onclick="changeColor('11');">Vivid Cerulean</div>
-	</div>
-	<div>
-	<div id='12' class='color' data-identifier='Green' onclick="changeColor('12');">Green</div>
-	<div id='13' class='color' data-identifier='Malachite' onclick="changeColor('13');">Malachite</div>
-	<div id='14' class='color' data-identifier='MediumSpringGreen' onclick="changeColor('14');">Medium Spring Green</div>
-	<div id='15' class='color' data-identifier='Cyan' onclick="changeColor('15');">Cyan</div>
-	</div>
-	<div>
-	<div id='16' class='color' data-identifier='BulgarianRose' onclick="changeColor('16');">Bulgarian Rose</div>
-	<div id='17' class='color' data-identifier='ImperialPurple' onclick="changeColor('17');">Imperial Purple</div>
-	<div id='18' class='color' data-identifier='Indigo' onclick="changeColor('18');">Indigo</div>
-	<div id='19' class='color' data-identifier='ElectricUltramarine' onclick="changeColor('19');">Electric Ultramarine</div>
-	</div>
-	<div>
-	<div id='20' class='color' data-identifier='ArmyGreen' onclick="changeColor('20');">Army Green</div>
-	<div id='21' class='color' data-identifier='DarkGray' onclick="changeColor('21');">Dark Gray</div>
-	<div id='22' class='color' data-identifier='Liberty' onclick="changeColor('22');">Liberty</div>
-	<div id='23' class='color' data-identifier='VeryLightBlue' onclick="changeColor('23');">Very Light Blue</div>
-	</div>
-	<div>
-	<div id='24' class='color' data-identifier='KellyGreen' onclick="changeColor('24');">Kelly Green</div>
-	<div id='25' class='color' data-identifier='MayGreen' onclick="changeColor('25');">May Green</div>
-	<div id='26' class='color' data-identifier='CadetBlue' onclick="changeColor('26');">Cadet Blue</div>
-	<div id='27' class='color' data-identifier='PictonBlue' onclick="changeColor('27');">Picton Blue</div>
-	</div>
-	<div>
-	<div id='28' class='color' data-identifier='BrightGreen' onclick="changeColor('28');">Bright Green</div>
-	<div id='29' class='color' data-identifier='ScreaminGreen' onclick="changeColor('29');">Screamin Green</div>
-	<div id='30' class='color' data-identifier='MediumAquamarine' onclick="changeColor('30');">Medium Aquamarine</div>
-	<div id='31' class='color' data-identifier='ElectricBlue' onclick="changeColor('31');">Electric Blue</div>
-	</div>
-	<div>
-	<div id='32' class='color' data-identifier='DarkCandyAppleRed' onclick="changeColor('32');">Dark Candy Apple Red</div>
-	<div id='33' class='color' data-identifier='JazzberryJam' onclick="changeColor('33');">Jazzberry Jam</div>
-	<div id='34' class='color' data-identifier='Purple' onclick="changeColor('34');">Purple</div>
-	<div id='35' class='color' data-identifier='VividViolet' onclick="changeColor('35');">Vivid Violet</div>
-	</div>
-	<div>
-	<div id='36' class='color' data-identifier='WindsorTan' onclick="changeColor('36');">Windsor Tan</div>
-	<div id='37' class='color' data-identifier='RoseVale' onclick="changeColor('37');">Rose Vale</div>
-	<div id='38' class='color' data-identifier='Purpureus' onclick="changeColor('38');">Purpureus</div>
-	<div id='39' class='color' data-identifier='LavenderIndigo' onclick="changeColor('39');">Lavender Indigo</div>
-	</div>
-	<div>
-	<div id='40' class='color' data-identifier='Limerick' onclick="changeColor('40');">Limerick</div>
-	<div id='41' class='color' data-identifier='Brass' onclick="changeColor('41');">Brass</div>
-	<div id='42' class='color' data-identifier='LightGray' onclick="changeColor('42');">Light Gray</div>
-	<div id='43' class='color' data-identifier='BabyBlueEyes' onclick="changeColor('43');">Baby Blue Eyes</div>
-	</div>
-	<div>
-	<div id='44' class='color' data-identifier='SpringBud' onclick="changeColor('44');">Spring Bud</div>
-	<div id='45' class='color' data-identifier='Inchworm' onclick="changeColor('45');">Inchworm</div>
-	<div id='46' class='color' data-identifier='MintGreen' onclick="changeColor('46');">Mint Green</div>
-	<div id='47' class='color' data-identifier='Celeste' onclick="changeColor('47');">Celeste</div>
-	</div>
-	<div>
-	<div id='48' class='color' data-identifier='Red' onclick="changeColor('48');">Red</div>
-	<div id='49' class='color' data-identifier='Folly' onclick="changeColor('49');">Folly</div>
-	<div id='50' class='color' data-identifier='FashionMagenta' onclick="changeColor('50');">Fashion Magenta</div>
-	<div id='51' class='color' data-identifier='Magenta' onclick="changeColor('51');">Magenta</div>
-	</div>
-	<div>
-	<div id='52' class='color' data-identifier='Orange' onclick="changeColor('52');">Orange</div>
-	<div id='53' class='color' data-identifier='SunsetOrange' onclick="changeColor('53');">Sunset Orange</div>
-	<div id='54' class='color' data-identifier='BrilliantRose' onclick="changeColor('54');">Brilliant Rose</div>
-	<div id='55' class='color' data-identifier='ShockingPink' onclick="changeColor('55');">Shocking Pink</div>
-	</div>
-	<div>
-	<div id='56' class='color' data-identifier='ChromeYellow' onclick="changeColor('56');">Chrome Yellow</div>
-	<div id='57' class='color' data-identifier='Rajah' onclick="changeColor('57');">Rajah</div>
-	<div id='58' class='color' data-identifier='Melon' onclick="changeColor('58');">Melon</div>
-	<div id='59' class='color' data-identifier='RichBrilliantLavender' onclick="changeColor('59');">Rich Brilliant Lavender</div>
-	</div>
-	<div>
-	<div id='60' class='color' data-identifier='Yellow' onclick="changeColor('60');">Yellow</div>
-	<div id='61' class='color' data-identifier='Icterine' onclick="changeColor('61');">Icterine</div>
-	<div id='62' class='color' data-identifier='PastelYellow' onclick="changeColor('62');">Pastel Yellow</div>
-	<div id='63' class='color' data-identifier='White' onclick="changeColor('63');">White</div>
-	</div>
 	
 	<br>
 	<p> Note: These are the official names used by the Pebble SDK, and I make no claim to their ownership or creation.</p>  
