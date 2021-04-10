@@ -153,7 +153,7 @@ $(document).ready(function(){
 	let colorUsages = JSON.parse(getCookie("colorUsages") || "{}")
 	Object.entries(colorUsages)
 		.sort( (a,b) => b[1] - a[1]) // sort by the number of usages
-		.slice(0, 6) // get only the first 6
+		.slice(0, 8) // get only the first 8
 		.forEach( ([color, usages]) => {
 			// add them all to the interface
 			let div = createColorDiv(color)
