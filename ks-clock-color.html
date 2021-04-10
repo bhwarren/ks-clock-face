@@ -55,7 +55,7 @@ function colorSort(color1, color2) {
 function getHTMLColor(name){
 	//color_picker_colors defined in color-dict.js
 	for (var key in color_picker_colors){
-		if(color_picker_colors[key]["identifier"] == name){
+		if(color_picker_colors[key].name == name){
 			return key;
 		}
 	}
@@ -81,7 +81,9 @@ function getColorID(name){
 		'Rajah': 57, 'Melon': 58, 'RichBrilliantLavender': 59, 'Yellow': 60,
 		'Icterine': 61, 'PastelYellow': 62, 'White': 63
 	}
-	return nameToNumberMap[name.replace(/\s+/, '')]
+	nameToNumberMap = JSON.parse(JSON.stringify(nameToNumberMap).toLowerCase())
+	name = name.replace(/\s+/g, '').replace(/\(.*\)/g, '').toLowerCase()
+	return nameToNumberMap[name]
 }
 
 // converts hex string to hsl, useful for sorting
