@@ -100,7 +100,7 @@ function changeColor(hexColor) {
 	colorUsages[hexColor] = (colorUsages[hexColor] || 0) + 1
 
 	let expires = new Date();
-  	expires.setTime(expires.getTime() + (100*24*60*60*1000)); // 100 years from now
+  	expires.setMilliseconds(expires.getTime() + (100*24*60*60*1000)); // 100 years from now
 	document.cookie = "colorUsages=" + JSON.stringify(colorUsages) + ";" + expires.toUTCString() + ";path=/";
 	location.href = 'pebblejs://close#color='+colorID;
 }
